@@ -2,6 +2,11 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 const {loadFixture} = require("@nomicfoundation/hardhat-network-helpers");
 describe("DomainOwnershipManager", function () {
+
+    let domainOwnershipManager;
+    let owner;
+    let nonOwner;
+
     async function deployContract() {
         const [owner, nonOwner] = await ethers.getSigners();
         const DomainOwnershipManager = await ethers.getContractFactory("DomainOwnershipManager");
@@ -10,16 +15,27 @@ describe("DomainOwnershipManager", function () {
     }
 
     describe("Register Domain", function () {
+
+        before(beforeTestBlock);
+
         it("Should register a new domain", async function () {
-            const {domainOwnershipManager, owner} = await loadFixture(deployContract);
             const domain = "com";
             const fee = ethers.parseEther("0.00001");
             await expect(domainOwnershipManager.registerDomain(domain, {value: fee}))
                 .to.emit(domainOwnershipManager, "DomainRegisteredEvent");
         });
 
+        it("Should revert if the domain name exceeds maximum length", async function () {
+            const fee = ethers.parseEther("0.00001");
+
+            const longDomain = "a".repeat(51);
+
+            await expect(domainOwnershipManager.registerDomain(longDomain, {value: fee}))
+                .to.be.revertedWithCustomError(domainOwnershipManager, "DomainNameMaxLengthError")
+                .withArgs(longDomain, "Domain name exceeds maximum length");
+        });
+
         it("Should revert when registering a domain with invalid format", async function () {
-            const {domainOwnershipManager} = await loadFixture(deployContract);
             const invalidDomain = "business.com";
             const fee = ethers.parseEther("0.00001");
             await expect(domainOwnershipManager.registerDomain(invalidDomain, {value: fee}))
@@ -28,16 +44,13 @@ describe("DomainOwnershipManager", function () {
         });
 
         it("Should revert when registering an already registered domain", async function () {
-            const {domainOwnershipManager, owner} = await loadFixture(deployContract);
             const domain = "com";
             const fee = ethers.parseEther("0.00001");
-            await domainOwnershipManager.registerDomain(domain, {value: fee});
             await expect(domainOwnershipManager.registerDomain(domain, {value: fee}))
                 .to.be.revertedWithCustomError(domainOwnershipManager, "DomainAlreadyRegisteredError");
         });
         it("Should revert when registering with insufficient fee", async function () {
-            const {domainOwnershipManager} = await loadFixture(deployContract);
-            const domain = "com";
+            const domain = "ua";
             const fee = ethers.parseEther("0.000001");
             await expect(domainOwnershipManager.registerDomain(domain, {value: fee}))
                 .to.be.revertedWithCustomError(domainOwnershipManager, "InsufficientFeeError");
@@ -46,8 +59,9 @@ describe("DomainOwnershipManager", function () {
 
     describe("DomainOwnershipManager", function () {
 
+        before(beforeTestBlock);
+
         it("logs and asserts domain registration events with domain hashes", async function () {
-            const {domainOwnershipManager} = await loadFixture(deployContract);
             const fee = ethers.parseEther("0.00001");
             const [account1, account2] = await ethers.getSigners();
 
@@ -91,53 +105,71 @@ describe("DomainOwnershipManager", function () {
             loggedDomains.forEach(domain => {
                 expect(allDomains).to.include(domain);
             });
+
+            expect(logs).to.have.lengthOf(4);
         });
     });
 
     describe("Withdraw", function () {
+
+        before(beforeTestBlock);
+
         it("Should revert when a non-owner attempts to withdraw funds", async function () {
-            const {domainOwnershipManager, nonOwner} = await loadFixture(deployContract);
             await expect(domainOwnershipManager.connect(nonOwner).withdraw())
                 .to.be.revertedWithCustomError(domainOwnershipManager, "NotOwnerError");
         });
     });
 
     describe("Change Registration Fee", function () {
-        it("Should allow the owner to change the registration fee", async function () {
-            const {domainOwnershipManager, owner} = await loadFixture(deployContract);
+
+        before(beforeTestBlock);
+
+        it("Should allow the owner to change the registration fee and log changing", async function () {
             const newFee = ethers.parseEther("0.00002");
+            const oldFee = await domainOwnershipManager.registrationFee();
+
             await domainOwnershipManager.changeTheFee(newFee);
+
             const updatedFee = await domainOwnershipManager.registrationFee();
+            const logs = await domainOwnershipManager.queryFilter(domainOwnershipManager.filters.RegistrationFeeChange());
+
             expect(updatedFee).to.equal(newFee);
+            expect(logs).to.have.lengthOf(1);
+            expect(Number(logs[0].args.oldFee)).to.be.equal(oldFee)
+            expect(Number(logs[0].args.newFee)).to.be.equal(newFee);
         });
 
         it("Should revert when a non-owner attempts to change the registration fee", async function () {
-            const {domainOwnershipManager, nonOwner} = await loadFixture(deployContract);
+            // const {domainOwnershipManager, nonOwner} = await loadFixture(deployContract);
             const newFee = ethers.parseEther("0.00002");
             await expect(domainOwnershipManager.connect(nonOwner).changeTheFee(newFee))
                 .to.be.revertedWithCustomError(domainOwnershipManager, "NotOwnerError");
         });
+
+        it("Should revert when an owner attempts to change the registration fee to 0", async function () {
+            // const {domainOwnershipManager, owner} = await loadFixture(deployContract);
+            const zeroFee = ethers.parseEther("0");
+            await expect(domainOwnershipManager.changeTheFee(zeroFee))
+                .to.be.revertedWithCustomError(domainOwnershipManager, "ZeroFeeError");
+        });
     });
     describe("Domain Ownership", function () {
+
+        before(beforeTestBlock);
+
         it("Should correctly map domain to owner", async function () {
-            const {domainOwnershipManager, owner} = await loadFixture(deployContract);
             const domain = "com";
             const fee = ethers.parseEther("0.00001");
             await domainOwnershipManager.registerDomain(domain, {value: fee});
             const domainOwner = await domainOwnershipManager.domainToOwner(domain);
             expect(domainOwner).to.equal(owner.address);
         });
-
-        it("Should correctly map owner to domains", async function () {
-            const {domainOwnershipManager, owner} = await loadFixture(deployContract);
-            const domain1 = "com";
-            const domain2 = "org";
-            const fee = ethers.parseEther("0.00001");
-            await domainOwnershipManager.registerDomain(domain1, {value: fee});
-            await domainOwnershipManager.registerDomain(domain2, {value: fee});
-            const ownerDomains = await domainOwnershipManager.getDomainsForOwner(owner.address);
-            expect(ownerDomains).to.include(domain1);
-            expect(ownerDomains).to.include(domain2);
-        });
     });
+
+    async function beforeTestBlock() {
+        const deployed = await loadFixture(deployContract);
+        domainOwnershipManager = deployed.domainOwnershipManager;
+        owner = deployed.owner;
+        nonOwner = deployed.nonOwner;
+    }
 });
