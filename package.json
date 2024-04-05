@@ -1,0 +1,43 @@
+{
+  "name": "RB_SolidityCourse",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "hardhat:compile": "hardhat compile",
+    "hardhat:deploy:sepolia": "MNEMONIC=$(security find-generic-password -w -s 'Seed Phrase Sepolia') ALCHEMY_API_KEY=$(security find-generic-password -w -s 'Alchemy API key Domain Manager') hardhat run scripts/deploy.js --network sepolia"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivankahnybediuk/RB_SolidityCourse.git"
+  },
+  "keywords": [],
+  "author": "Ivanka Hnybediuk",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ivankahnybediuk/RB_SolidityCourse/issues"
+  },
+  "homepage": "https://github.com/ivankahnybediuk/RB_SolidityCourse#readme",
+  "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "chai": "^4.2.0",
+    "hardhat": "^2.22.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.3.14",
+    "@types/mocha": "^10.0.6",
+    "ethers": "^6.11.1",
+    "hardhat-gas-reporter": "^1.0.10",
+    "solidity-coverage": "^0.8.11",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.4.3"
+  }
+}
