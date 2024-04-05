@@ -15,4 +15,8 @@ contract DomainOwnershipErrors {
 
     error DomainNameVerificationError(string name, string message);
 
+    error DomainNameMaxLengthError(string name, string message);
+
+    error ZeroFeeError(uint256 newFee, string message);
+
 }
